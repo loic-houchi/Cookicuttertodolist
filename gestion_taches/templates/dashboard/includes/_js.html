@@ -1,0 +1,95 @@
+<script>
+    // Toggle sidebar functionality
+    const sidebar = document.getElementById('sidebar');
+    const overlay = document.getElementById('overlay');
+    const sidebarToggle = document.getElementById('sidebar-toggle');
+    const desktopToggle = document.getElementById('desktop-toggle');
+    const mainContent = document.getElementById('main-content');
+    let sidebarOpen = false;
+    let sidebarCollapsed = false;
+
+    // Mobile sidebar toggle
+    sidebarToggle.addEventListener('click', (e) => {
+        e.stopPropagation();
+        sidebarOpen = !sidebarOpen;
+        
+        if (sidebarOpen) {
+            sidebar.classList.remove('-translate-x-full');
+            overlay.classList.remove('hidden');
+        } else {
+            sidebar.classList.add('-translate-x-full');
+            overlay.classList.add('hidden');
+        }
+    });
+
+    // Desktop sidebar toggle - collapses to icon-only view
+    desktopToggle.addEventListener('click', () => {
+        sidebarCollapsed = !sidebarCollapsed;
+        
+        if (sidebarCollapsed) {
+            // Collapse to icon-only
+            sidebar.classList.add('sidebar-collapsed');
+            sidebar.style.width = '4rem';
+            mainContent.style.paddingLeft = '4rem';
+        } else {
+            // Expand to full width
+            sidebar.classList.remove('sidebar-collapsed');
+            sidebar.style.width = '16rem';
+            mainContent.style.paddingLeft = '16rem';
+        }
+    });
+
+    // Close sidebar when clicking overlay
+    overlay.addEventListener('click', () => {
+        sidebar.classList.add('-translate-x-full');
+        overlay.classList.add('hidden');
+        sidebarOpen = false;
+    });
+
+    // Close sidebar when clicking outside on mobile
+    document.addEventListener('click', (e) => {
+        if (window.innerWidth < 1024 && sidebarOpen) {
+            if (!sidebar.contains(e.target) && !sidebarToggle.contains(e.target)) {
+                sidebar.classList.add('-translate-x-full');
+                overlay.classList.add('hidden');
+                sidebarOpen = false;
+            }
+        }
+    });
+
+    // Handle window resize
+    window.addEventListener('resize', () => {
+        if (window.innerWidth >= 1024) {
+            overlay.classList.add('hidden');
+            sidebarOpen = false;
+            // Reset desktop view if not collapsed
+            if (!sidebarCollapsed) {
+                sidebar.classList.remove('-translate-x-full');
+                sidebar.style.width = '16rem';
+                mainContent.style.paddingLeft = '16rem';
+            }
+        } else {
+            // On mobile, ensure sidebar is hidden unless explicitly opened
+            if (!sidebarOpen) {
+                sidebar.classList.add('-translate-x-full');
+            }
+            // Reset collapsed state on mobile
+            sidebarCollapsed = false;
+            sidebar.classList.remove('sidebar-collapsed');
+            sidebar.style.width = '16rem';
+            mainContent.style.paddingLeft = '0';
+        }
+    });
+
+    // Prevent sidebar clicks from closing the sidebar
+    sidebar.addEventListener('click', (e) => {
+        e.stopPropagation();
+    });
+
+    // Add smooth animations to stat cards
+    const statCards = document.querySelectorAll('.grid > div');
+    statCards.forEach((card, index) => {
+        card.style.animationDelay = `${index * 0.1}s`;
+        card.classList.add('animate-fadeInUp');
+    });
+</script>

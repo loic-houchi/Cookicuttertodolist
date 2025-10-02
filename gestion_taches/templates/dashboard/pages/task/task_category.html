@@ -1,0 +1,799 @@
+{% extends "dashboard/index.html" %}
+{% load i18n static %}
+
+{% block extrahead %}
+    <!-- Favicon pour éviter l'erreur 404 -->
+    <link rel="icon" href="{% static 'favicon.ico' %}">
+    <!-- jQuery requis pour certains plugins CKEditor -->
+    <script src="{% static 'admin/js/vendor/jquery/jquery.js' %}"></script>
+    <!-- i18n pour les traductions JavaScript -->
+    <script src="{% get_static_prefix %}djangojs/jsi18n/"></script>
+    <!-- Flowbite pour les modals -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.5.1/flowbite.min.js" integrity="sha512-vq9GbFv+ZVJq0Qx3YxQ QhzYJ3cn8YH2lCMT0Zx5D2GNx6f9kP8oi4HjJb0Hjhe9+W3qD0ga5xk7O2p6n0g8Q4bQ==" crossorigin="anonymous" referrerpolicy="no-referrer"></script>
+    <!-- Gestionnaires personnalisés -->
+    <script src="{% static 'js/common/toast_manager.js' %}"></script>
+    <script src="{% static 'js/common/notification_manager.js' %}"></script>
+    <!-- Charger CKEditor localement avec fallback CDN si échec -->
+    <script>
+        // Basepath doit être défini avant le chargement du script CKEditor
+        window.CKEDITOR_BASEPATH = '{% static "ckeditor/" %}';
+    </script>
+    <script src="{% static 'ckeditor/ckeditor.js' %}" onerror="(function(){
+        console.error('Failed to load CKEditor from static. Falling back to CDN...');
+        var s=document.createElement('script');
+        s.src='https://cdn.ckeditor.com/4.20.2/standard/ckeditor.js';
+        document.head.appendChild(s);
+    })()"></script>
+    
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- En-tête avec titre et bouton pour ajouter une catégorie -->
+    <div class="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
+        <div class="flex items-center justify-between">
+            <div class="flex items-center space-x-4">
+                <div class="w-12 h-12 bg-primary/10 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <h2 class="text-2xl font-bold text-gray-900">{% trans "Catégories de Tâches" %}</h2>
+                    <p class="text-gray-600">{% trans "Gérez les catégories de tâches" %}</p>
+                </div>
+            </div>
+            <div class="flex items-center space-x-4">
+                <button onclick="openCreateModal()"
+                        class="px-4 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors flex items-center space-x-2">
+                    <i class="fas fa-plus"></i>
+                    <span>{% trans "Ajouter une catégorie" %}</span>
+                </button>
+sssssssssssssssssssssssssssssssssssssssssssssssss
+            </div>
+        </div>
+    </div>
+
+    <!-- Tableau des catégories avec recherche -->
+    <div class="bg-white rounded-lg shadow-md card-hover overflow-hidden">
+        <div class="overflow-x-auto">
+            <div class="relative flex justify-end">
+                <input type="text" id="search-bar" name="search" placeholder="{% trans "Rechercher une catégorie..." %}" 
+                       class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary focus:border-primary block w-64 p-2.5 pr-10"
+                       onkeyup="searchCategories(this.value)">
+                <svg class="absolute right-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+            </div>
+            <table class="min-w-full divide-y divide-gray-200" id="category-table">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Nom" %}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Description" %}</th>
+                        <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Date de création" %}</th>
+                        <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">{% trans "Actions" %}</th>
+                    </tr>
+                </thead>
+                <tbody class="bg-white divide-y divide-gray-200" id="category-table-body">
+                    {% for category in categories %}
+                    <tr class="hover:bg-gray-50 transition-colors">
+                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">{{ category.name|default_if_none:"Catégorie sans nom" }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500">{{ category.description|truncatechars:30|safe|default_if_none:"-" }}</td>
+                        <td class="px-6 py-4 text-sm text-gray-500">{{ category.created_at|date:"Y-m-d H:i"|default_if_none:"-" }}</td>
+                        <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                            <div class="flex justify-end space-x-2">
+                                <button onclick="openDetailModal('{{ category.pk }}', '{{ category.name|default_if_none:"Catégorie sans nom"|escapejs }}', '{{ category.description|default_if_none:""|escapejs }}', '{{ category.created_at|date:"Y-m-d H:i"|default_if_none:""|escapejs }}')"
+                                        class="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50 transition-colors" title="{% trans 'Voir' %}">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                    </svg>
+                                </button>
+                                <button onclick="openEditModal('{{ category.pk }}', '{{ category.name|default_if_none:"Catégorie sans nom"|escapejs }}', '{{ category.description|default_if_none:""|escapejs }}')"
+                                        class="text-yellow-600 hover:text-yellow-900 p-1 rounded-full hover:bg-yellow-50 transition-colors" title="{% trans 'Modifier' %}">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </button>
+                                <button onclick="openDeleteModal('{{ category.pk }}')" class="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 transition-colors" title="{% trans 'Supprimer' %}">
+                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% empty %}
+                    <tr>
+                        <td colspan="4" class="px-6 py-4 text-center text-gray-500 text-sm">{% trans "Aucune catégorie trouvée." %}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        <!-- Pagination -->
+        {% if page_obj.has_other_pages %}
+        <div class="p-4 border-t border-gray-200">
+            <nav class="flex items-center justify-between">
+                <div class="flex-1 flex justify-between sm:hidden">
+                    <a href="{% if page_obj.has_previous %}?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}{% else %}#{% endif %}" 
+                       class="relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 {% if not page_obj.has_previous %}opacity-50 cursor-not-allowed{% endif %}">
+                        {% trans "Précédent" %}
+                    </a>
+                    <a href="{% if page_obj.has_next %}?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}{% else %}#{% endif %}" 
+                       class="ml-3 relative inline-flex items-center px-4 py-2 border border-gray-300 text-sm font-medium rounded-md text-gray-700 bg-white hover:bg-gray-50 {% if not page_obj.has_next %}opacity-50 cursor-not-allowed{% endif %}">
+                        {% trans "Suivant" %}
+                    </a>
+                </div>
+                <div class="hidden sm:flex-1 sm:flex sm:items-center sm:justify-between">
+                    <div>
+                        <p class="text-sm text-gray-700">
+                            {% trans "Affichage de" %}
+                            <span class="font-medium">{{ page_obj.start_index }}</span>
+                            {% trans "à" %}
+                            <span class="font-medium">{{ page_obj.end_index }}</span>
+                            {% trans "sur" %}
+                            <span class="font-medium">{{ page_obj.paginator.count }}</span>
+                            {% trans "catégories" %}
+                        </p>
+                    </div>
+                    <div>
+                        <nav class="relative z-0 inline-flex rounded-md shadow-sm -space-x-px" aria-label="Pagination">
+                            <a href="{% if page_obj.has_previous %}?page={{ page_obj.previous_page_number }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}{% else %}#{% endif %}" 
+                               class="relative inline-flex items-center px-2 py-2 rounded-l-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 {% if not page_obj.has_previous %}opacity-50 cursor-not-allowed{% endif %}">
+                                <span class="sr-only">{% trans "Précédent" %}</span>
+                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M12.707 5.293a1 1 0 010 1.414L9.414 10l3.293 3.293a1 1 0 01-1.414 1.414l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </a>
+                            {% for num in page_obj.paginator.page_range %}
+                            <a href="?page={{ num }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}" 
+                               class="relative inline-flex items-center px-4 py-2 border border-gray-300 bg-white text-sm font-medium {% if page_obj.number == num %}text-primary bg-primary/10{% else %}text-gray-700 hover:bg-gray-50{% endif %}">
+                                {{ num }}
+                            </a>
+                            {% endfor %}
+                            <a href="{% if page_obj.has_next %}?page={{ page_obj.next_page_number }}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}{% else %}#{% endif %}" 
+                               class="relative inline-flex items-center px-2 py-2 rounded-r-md border border-gray-300 bg-white text-sm font-medium text-gray-500 hover:bg-gray-50 {% if not page_obj.has_next %}opacity-50 cursor-not-allowed{% endif %}">
+                                <span class="sr-only">{% trans "Suivant" %}</span>
+                                <svg class="h-5 w-5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+                                    <path fill-rule="evenodd" d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z" clip-rule="evenodd" />
+                                </svg>
+                            </a>
+                        </nav>
+                    </div>
+                </div>
+            </nav>
+        </div>
+        {% endif %}
+    </div>
+
+    <!-- Modal pour Créer/Modifier Catégorie -->
+    <div id="category-modal" tabindex="-1" class="hidden fixed inset-0 z-50 flex items-center justify-center w-full h-full bg-black/50 bg-opacity-50 backdrop-blur-sm transition-opacity">
+        <div class="relative mb-12 w-full max-w-3xl max-h-[95vh]">
+            <div class="relative bg-white rounded-lg shadow-md flex flex-col h-full">
+                <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
+                    <h3 id="modal-title" class="text-lg font-semibold text-gray-900">{% trans "Ajouter une catégorie" %}</h3>
+                    <button type="button" onclick="closeModal('category-modal')" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                        <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                        </svg>
+                        <span class="sr-only">{% trans "Fermer la modale" %}</span>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 md:p-5">
+                    <form id="category-form" method="post" action="{% url 'tasks:category' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" id="form-action" value="create">
+                        <input type="hidden" name="category_id" id="category-id">
+                        <div class="grid grid-cols-1 gap-6">
+                            <div class="space-y-4">
+                                <div>
+                                    <label for="id_name" class="block mb-2 text-sm font-medium text-gray-900">
+                                        {% trans "Nom" %} <span class="text-red-500">*</span>
+                                    </label>
+                                    <input type="text" id="id_name" name="name" maxlength="255" required
+                                           class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+                                           placeholder="{% trans 'Exemple : Urgent, Routine' %}">
+                                    <p id="error-name" class="mt-1 text-sm text-red-600 hidden"></p>
+                                </div>
+                                <div>
+                                    <label for="id_description" class="block mb-2 text-sm font-medium text-gray-900">{% trans "Description" %}</label>
+                                    <textarea id="id_description" name="description" rows="4"
+                                              class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-primary focus:border-primary block w-full p-2.5"
+                                              placeholder="{% trans 'Description de la catégorie' %}"></textarea>
+                                    <p id="error-description" class="mt-1 text-sm text-red-600 hidden"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="flex items-center p-4 md:p-5 border-t border-gray-200 rounded-b">
+                    <button type="button" onclick="submitCategoryForm()" class="text-white bg-primary hover:bg-primary/90 focus:ring-4 focus:outline-none focus:ring-primary/50 font-medium rounded-lg text-sm px-5 py-2.5 text-center flex items-center">
+                        <svg class="w-4 h-4 me-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        {% trans "Enregistrer" %}
+                    </button>
+                    <button type="button" onclick="closeModal('category-modal')" class="py-2.5 px-5 ms-3 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary focus:z-10 focus:ring-4 focus:ring-gray-100">
+                        {% trans "Annuler" %}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour Détails Catégorie -->
+    <div id="category-detail-modal" tabindex="-1" class="hidden fixed inset-0 z-50 flex items-center justify-center w-full h-full bg-black/50 backdrop-blur-sm transition-opacity">
+        <div class="relative p-4 w-full max-w-3xl max-h-[95vh]">
+            <div class="relative bg-white rounded-lg shadow-md flex flex-col h-full">
+                <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
+                    <h3 class="text-lg font-semibold text-gray-900">{% trans "Détails de la catégorie" %}</h3>
+                    <button type="button" onclick="closeModal('category-detail-modal')" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                        <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                        </svg>
+                        <span class="sr-only">{% trans "Fermer la modale" %}</span>
+                    </button>
+                </div>
+                <div class="flex-1 overflow-y-auto p-4 md:p-5">
+                    <div class="flex items-center space-x-3 text-gray-500 mb-4">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+                        </svg>
+                        <span class="text-lg font-medium">{% trans "Informations sur la catégorie" %}</span>
+                    </div>
+                    <div class="grid grid-cols-1 gap-6">
+                        <div class="space-y-4">
+                            <div class="pb-3 border-b border-gray-100">
+                                <dt class="text-sm font-medium text-gray-500 mb-1">{% trans "Nom" %}</dt>
+                                <dd id="detail-name" class="text-lg font-semibold text-gray-900"></dd>
+                            </div>
+                            <div class="pb-3 border-b border-gray-100">
+                                <dt class="text-sm font-medium text-gray-500 mb-1">{% trans "Description" %}</dt>
+                                <dd id="detail-description" class="text-gray-700"></dd>
+                            </div>
+                            <div class="pb-3 border-b border-gray-100">
+                                <dt class="text-sm font-medium text-gray-500 mb-1">{% trans "Date de création" %}</dt>
+                                <dd id="detail-created" class="text-gray-700"></dd>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex items-center p-4 md:p-5 border-t border-gray-200 rounded-b">
+                    <button onclick="openEditModalFromDetail()" class="text-white bg-yellow-500 hover:bg-yellow-600 focus:ring-4 focus:outline-none focus:ring-yellow-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center flex items-center">
+                        <svg class="w-4 h-4 me-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        {% trans "Modifier" %}
+                    </button>
+                    <button onclick="openDeleteModalFromDetail()" class="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center flex items-center ms-3">
+                        <svg class="w-4 h-4 me-1" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                        </svg>
+                        {% trans "Supprimer" %}
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal pour Suppression Catégorie -->
+    <div id="delete-modal" tabindex="-1" class="hidden fixed inset-0 z-50 flex items-center justify-center w-full h-full bg-black/50 bg-opacity-50 backdrop-blur-sm transition-opacity">
+        <div class="relative p-4 w-full max-w-md max-h-[80vh]">
+            <div class="relative bg-white rounded-lg shadow-md flex flex-col">
+                <div class="flex items-center justify-between p-4 md:p-5 border-b rounded-t">
+                    <h3 class="text-lg font-semibold text-gray-900">{% trans "Confirmer la suppression" %}</h3>
+                    <button type="button" onclick="closeModal('delete-modal')" class="text-gray-400 bg-transparent hover:bg-gray-200 hover:text-gray-900 rounded-lg text-sm w-8 h-8 ms-auto inline-flex justify-center items-center">
+                        <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
+                            <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+                        </svg>
+                        <span class="sr-only">{% trans "Fermer la modale" %}</span>
+                    </button>
+                </div>
+                <div class="p-4 md:p-5 text-center">
+                    <svg class="w-16 h-16 mx-auto text-red-600 mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <h3 class="mb-5 text-lg text-gray-500">{% trans "Êtes-vous sûr de vouloir supprimer cette catégorie ?" %}</h3>
+                    <form id="delete-form" method="post" action="{% url 'tasks:category' %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="action" value="delete">
+                        <input type="hidden" name="category_id" id="delete-category-id">
+                        <button type="submit" class="text-white bg-red-600 hover:bg-red-800 focus:ring-4 focus:outline-none focus:ring-red-300 font-medium rounded-lg text-sm px-5 py-2.5 text-center inline-flex items-center mr-2">
+                            {% trans "Oui, supprimer" %}
+                        </button>
+                        <button type="button" onclick="closeModal('delete-modal')" class="py-2.5 px-5 text-sm font-medium text-gray-900 focus:outline-none bg-white rounded-lg border border-gray-200 hover:bg-gray-100 hover:text-primary focus:z-10 focus:ring-4 focus:ring-gray-100">
+                            {% trans "Annuler" %}
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript pour gérer les interactions (adapté pour catégories) -->
+    <script src="{% static 'ckeditor/ckeditor.js' %}"></script>
+
+<script>
+    // Initialize CKEditor
+    document.addEventListener("DOMContentLoaded", function() {
+        const descriptionField = document.getElementById("id_description");
+        if (descriptionField) {
+            try {
+                CKEDITOR.replace("id_description", {
+                    height: 300,
+                    toolbar: [
+                        ['Bold', 'Italic', 'Underline'],
+                        ['NumberedList', 'BulletedList', '-', 'Outdent', 'Indent'],
+                        ['Link', 'Unlink'],
+                        ['Source']
+                    ],
+                    removePlugins: 'elementspath',
+                    resize_enabled: false,
+                    on: {
+                        instanceReady: function() {
+                            console.debug('CKEditor initialized successfully');
+                        }
+                    }
+                });
+            } catch (e) {
+                console.error('Failed to initialize CKEditor:', e);
+                window.notificationManager.showError("{% trans 'Erreur : Échec de l\'initialisation de CKEditor.' %}");
+            }
+        } else {
+            console.error('Element with ID "id_description" not found');
+        }
+    });
+
+    const categoryUrl = "{% url 'tasks:category' %}";
+    let currentItemId = null;
+    const originalCategories = {{ categories_json|safe }};
+
+    function escapeHTML(str) {
+        if (!str) return '';
+        return String(str).replace(/[&<>"']/g, function(match) {
+            const escapeMap = {
+                '&': '&amp;',
+                '<': '&lt;',
+                '>': '&gt;',
+                '"': '&quot;',
+                "'": '&#39;'
+            };
+            return escapeMap[match];
+        });
+    }
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        console.debug(`getCookie("${name}") returned:`, cookieValue);
+        return cookieValue;
+    }
+
+    window.closeModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.add('hidden');
+            document.body.classList.remove('overflow-hidden');
+            if (modalId === 'category-modal') {
+                const form = document.getElementById('category-form');
+                if (form) {
+                    form.reset();
+                    document.getElementById('form-action').value = 'create';
+                    document.getElementById('category-id').value = '';
+                    document.getElementById('modal-title').textContent = "{% trans 'Ajouter une catégorie' %}";
+                    if (CKEDITOR.instances.id_description) {
+                        CKEDITOR.instances.id_description.setData('');
+                    }
+                    ['name', 'description'].forEach(field => {
+                        const errorElement = document.getElementById(`error-${field}`);
+                        if (errorElement) {
+                            errorElement.textContent = '';
+                            errorElement.classList.add('hidden');
+                        }
+                    });
+                }
+            }
+        }
+    };
+
+    window.openModal = function(modalId) {
+        const modal = document.getElementById(modalId);
+        if (modal) {
+            modal.classList.remove('hidden');
+            document.body.classList.add('overflow-hidden');
+        } else {
+            console.error(`Modal with ID "${modalId}" not found`);
+            window.notificationManager.showError("{% trans 'Erreur : Modale non trouvée.' %}");
+        }
+    };
+
+    window.openCreateModal = function() {
+        const form = document.getElementById('category-form');
+        if (!form) {
+            console.error('Form with ID "category-form" not found');
+            window.notificationManager.showError("{% trans 'Erreur : Formulaire non trouvé.' %}");
+            return;
+        }
+        form.action = categoryUrl;
+        document.getElementById('form-action').value = 'create';
+        document.getElementById('category-id').value = '';
+        document.getElementById('modal-title').textContent = "{% trans 'Ajouter une catégorie' %}";
+        form.reset();
+        if (CKEDITOR.instances.id_description) {
+            CKEDITOR.instances.id_description.setData('');
+        }
+        ['name', 'description'].forEach(field => {
+            const errorElement = document.getElementById(`error-${field}`);
+            if (errorElement) {
+                errorElement.textContent = '';
+                errorElement.classList.add('hidden');
+            }
+        });
+        window.openModal('category-modal');
+    };
+
+    window.openDetailModal = function(id, name, description, created) {
+        if (!id || typeof id !== 'string') {
+            console.error('Invalid ID provided to openDetailModal:', id);
+            window.notificationManager.showError("{% trans 'Erreur : Identifiant invalide.' %}");
+            return;
+        }
+        currentItemId = id;
+        document.getElementById('detail-name').textContent = escapeHTML(name) || "{% trans 'Catégorie sans nom' %}";
+        document.getElementById('detail-description').innerHTML = description || "{% trans 'Non défini' %}";
+        document.getElementById('detail-created').textContent = escapeHTML(created) || "{% trans 'Non défini' %}";
+        window.openModal('category-detail-modal');
+    };
+
+    window.openEditModal = function(id, name, description) {
+        if (!id || typeof id !== 'string') {
+            console.error('Invalid ID provided to openEditModal:', id);
+            window.notificationManager.showError("{% trans 'Erreur : Identifiant invalide.' %}");
+            return;
+        }
+        const form = document.getElementById('category-form');
+        if (!form) {
+            console.error('Form with ID "category-form" not found');
+            window.notificationManager.showError("{% trans 'Erreur : Formulaire non trouvé.' %}");
+            return;
+        }
+        form.action = categoryUrl;
+        document.getElementById('form-action').value = 'edit';
+        document.getElementById('category-id').value = id;
+        document.getElementById('modal-title').textContent = "{% trans 'Modifier une catégorie' %}";
+        document.getElementById('id_name').value = escapeHTML(name) || '';
+        if (CKEDITOR.instances.id_description) {
+            CKEDITOR.instances.id_description.setData(description || '');
+        } else {
+            document.getElementById('id_description').value = description || '';
+        }
+        ['name', 'description'].forEach(field => {
+            const errorElement = document.getElementById(`error-${field}`);
+            if (errorElement) {
+                errorElement.textContent = '';
+                errorElement.classList.add('hidden');
+            }
+        });
+        window.openModal('category-modal');
+    };
+
+    window.openEditModalFromDetail = function() {
+        if (currentItemId) {
+            const name = document.getElementById('detail-name').textContent === "{% trans 'Catégorie sans nom' %}" ? '' : document.getElementById('detail-name').textContent;
+            const description = document.getElementById('detail-description').innerHTML === "{% trans 'Non défini' %}" ? '' : document.getElementById('detail-description').innerHTML;
+            window.openEditModal(currentItemId, name, description);
+            window.closeModal('category-detail-modal');
+        } else {
+            console.error('No currentItemId set for openEditModalFromDetail');
+            window.notificationManager.showError("{% trans 'Erreur : Aucun identifiant sélectionné.' %}");
+        }
+    };
+
+    window.openDeleteModal = function(id) {
+        if (!id || typeof id !== 'string') {
+            console.error('Invalid ID provided to openDeleteModal:', id);
+            window.notificationManager.showError("{% trans 'Erreur : Identifiant invalide.' %}");
+            return;
+        }
+        currentItemId = id;
+        document.getElementById('delete-category-id').value = id;
+        window.openModal('delete-modal');
+    };
+
+    window.openDeleteModalFromDetail = function() {
+        if (currentItemId) {
+            window.openDeleteModal(currentItemId);
+            window.closeModal('category-detail-modal');
+        } else {
+            console.error('No currentItemId set for openDeleteModalFromDetail');
+            window.notificationManager.showError("{% trans 'Erreur : Aucun identifiant sélectionné.' %}");
+        }
+    };
+
+    window.confirmDelete = function(id) {
+        if (!id || typeof id !== 'string') {
+            console.error('Invalid ID provided to confirmDelete:', id);
+            window.notificationManager.showError("{% trans 'Erreur : Identifiant invalide.' %}");
+            return;
+        }
+        const form = document.getElementById('delete-form');
+        if (!form) {
+            console.error('Delete form not found');
+            window.notificationManager.showError("{% trans 'Erreur : Formulaire de suppression non trouvé.' %}");
+            return;
+        }
+        const csrfTokenInput = form.querySelector('input[name="csrfmiddlewaretoken"]');
+        const csrfToken = csrfTokenInput ? csrfTokenInput.value : getCookie('csrftoken');
+
+        if (!csrfToken) {
+            console.error('CSRF token is missing or invalid');
+            window.notificationManager.showError("{% trans 'Erreur : Jeton CSRF manquant ou invalide.' %}");
+            return;
+        }
+
+        const formData = new FormData();
+        formData.append('action', 'delete');
+        formData.append('category_id', id);
+        formData.append('csrfmiddlewaretoken', csrfToken);
+
+        fetch(categoryUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.text().then(text => { throw new Error(`HTTP error! Status: ${response.status}, Response: ${text}`); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                window.notificationManager.showSuccess(data.message);
+                window.closeModal('delete-modal');
+                setTimeout(() => window.location.reload(), 3000);
+            } else {
+                window.notificationManager.showError(data.message || "{% trans 'Erreur lors de la suppression.' %}");
+            }
+        })
+        .catch(error => {
+            console.error('Error during DELETE request:', error);
+            window.notificationManager.showError("{% trans 'Erreur lors de la suppression : ' %}" + error.message);
+            window.closeModal('delete-modal');
+        });
+    };
+
+    window.submitCategoryForm = function() {
+        const form = document.getElementById('category-form');
+        if (!form) {
+            console.error('Form with ID "category-form" not found');
+            window.notificationManager.showError("{% trans 'Erreur : Formulaire non trouvé.' %}");
+            return;
+        }
+        const formData = new FormData(form);
+        const action = document.getElementById('form-action').value;
+
+        // Synchroniser CKEditor avec le textarea avant l'envoi
+        if (CKEDITOR.instances.id_description) {
+            CKEDITOR.instances.id_description.updateElement();
+            formData.set('description', CKEDITOR.instances.id_description.getData());
+            console.debug('CKEditor data synchronized:', CKEDITOR.instances.id_description.getData());
+        } else {
+            console.warn('CKEditor not available, using textarea value:', document.getElementById('id_description').value);
+        }
+
+        // Déboguer le contenu de FormData
+        for (let [key, value] of formData.entries()) {
+            console.debug(`FormData: ${key} = ${value}`);
+        }
+
+        if (!categoryUrl || typeof categoryUrl !== 'string' || !categoryUrl.includes('category')) {
+            console.error('Invalid categoryUrl:', categoryUrl);
+            window.notificationManager.showError("{% trans 'Erreur : URL de catégorie invalide.' %}");
+            return;
+        }
+
+        ['name', 'description'].forEach(field => {
+            const errorElement = document.getElementById(`error-${field}`);
+            if (errorElement) {
+                errorElement.textContent = '';
+                errorElement.classList.add('hidden');
+            }
+        });
+
+        fetch(categoryUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! Status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                window.notificationManager.showSuccess(data.message);
+                window.closeModal('category-modal');
+                setTimeout(() => window.location.reload(), 3000);
+            } else {
+                if (data.errors) {
+                    Object.keys(data.errors).forEach(field => {
+                        const errorElement = document.getElementById(`error-${field}`);
+                        if (errorElement) {
+                            errorElement.textContent = data.errors[field].join(', ');
+                            errorElement.classList.remove('hidden');
+                        }
+                    });
+                } else {
+                    window.notificationManager.showError(data.message || "{% trans 'Erreur lors de l\'enregistrement.' %}");
+                }
+            }
+        })
+        .catch(error => {
+            console.error(`Error during ${action.toUpperCase()} request:`, error);
+            window.notificationManager.showError("{% trans 'Erreur lors de l\'enregistrement : ' %}" + error.message);
+        });
+    };
+
+    window.searchCategories = function(query) {
+        if (typeof query !== 'string') {
+            console.error('Invalid query type in searchCategories:', query);
+            window.notificationManager.showError("{% trans 'Erreur : Requête de recherche invalide.' %}");
+            return;
+        }
+        const tableBody = document.getElementById('category-table-body');
+        if (!tableBody) {
+            console.error('Table body with ID "category-table-body" not found');
+            window.notificationManager.showError("{% trans 'Erreur : Corps de la table non trouvé.' %}");
+            return;
+        }
+        tableBody.innerHTML = '';
+        const filteredCategories = originalCategories.filter(category =>
+            category.name && category.name.toLowerCase().includes(query.toLowerCase())
+        );
+        if (filteredCategories.length === 0) {
+            tableBody.innerHTML = `
+                <tr>
+                    <td colspan="4" class="px-6 py-4 text-center text-gray-500 text-sm">
+                        {% trans "Aucune catégorie trouvée." %}
+                    </td>
+                </tr>
+            `;
+            return;
+        }
+        filteredCategories.forEach(category => {
+            const row = document.createElement('tr');
+            row.className = 'hover:bg-gray-50 transition-colors';
+            row.innerHTML = `
+                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium text-gray-900">${escapeHTML(category.name) || "{% trans 'Catégorie sans nom' %}"}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${category.description ? escapeHTML(category.description).substring(0, 30) + (category.description.length > 30 ? '...' : '') : '-'}</td>
+                <td class="px-6 py-4 text-sm text-gray-500">${escapeHTML(category.created_at) || '-'}</td>
+                <td class="px-6 py-4 whitespace-nowrap text-right text-sm">
+                    <div class="flex justify-end space-x-2">
+                        <button onclick="openDetailModal('${escapeHTML(category.id)}', '${escapeHTML(category.name) || ''}', '${escapeHTML(category.description) || ''}', '${escapeHTML(category.created_at) || ''}')"
+                                class="text-blue-600 hover:text-blue-900 p-1 rounded-full hover:bg-blue-50 transition-colors" title="{% trans 'Voir' %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="openEditModal('${escapeHTML(category.id)}', '${escapeHTML(category.name) || ''}', '${escapeHTML(category.description) || ''}')"
+                                class="text-yellow-600 hover:text-yellow-900 p-1 rounded-full hover:bg-yellow-50 transition-colors" title="{% trans 'Modifier' %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                            </svg>
+                        </button>
+                        <button onclick="openDeleteModal('${escapeHTML(category.id)}')" class="text-red-600 hover:text-red-900 p-1 rounded-full hover:bg-red-50 transition-colors" title="{% trans 'Supprimer' %}">
+                            <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                            </svg>
+                        </button>
+                    </div>
+                </td>
+            `;
+            tableBody.appendChild(row);
+        });
+    };
+
+    document.addEventListener('DOMContentLoaded', function() {
+        console.debug('DOM fully loaded');
+        // Verify modal elements
+        ['category-modal', 'category-detail-modal', 'delete-modal'].forEach(modalId => {
+            if (!document.getElementById(modalId)) {
+                console.error(`Modal with ID "${modalId}" not found in DOM`);
+                window.notificationManager.showError(`Erreur : Modale "${modalId}" non trouvée.`);
+            }
+        });
+        // Verify form elements
+        ['category-form', 'delete-form'].forEach(formId => {
+            if (!document.getElementById(formId)) {
+                console.error(`Form with ID "${formId}" not found in DOM`);
+                window.notificationManager.showError(`Erreur : Formulaire "${formId}" non trouvé.`);
+            }
+        });
+        // Verify add button
+        const addButton = document.querySelector('button[onclick="openCreateModal()"]');
+        if (!addButton) {
+            console.error('Add category button not found');
+            window.notificationManager.showError("{% trans 'Erreur : Bouton Ajouter une catégorie non trouvé.' %}");
+        } else {
+            console.debug('Add category button found');
+        }
+        // Initialize Flowbite modals
+        if (window.Modal || (window.flowbite && window.flowbite.Modal)) {
+            const modals = document.querySelectorAll('[id="category-modal"], [id="category-detail-modal"], [id="delete-modal"]');
+            modals.forEach(modal => {
+                new (window.flowbite ? window.flowbite.Modal : window.Modal)(modal, {
+                    backdrop: 'static',
+                    backdropClasses: 'bg-black/50 fixed inset-0 z-40',
+                    closable: true
+                });
+            });
+        } else {
+            console.warn('Flowbite Modal library not detected.');
+        }
+        // Modal click-to-close
+        document.querySelectorAll('.fixed').forEach(modal => {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    window.closeModal(modal.id);
+                }
+            });
+        });
+        // Escape key to close modals
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape') {
+                const modals = document.querySelectorAll('.fixed:not(.hidden)');
+                modals.forEach(modal => {
+                    window.closeModal(modal.id);
+                });
+            }
+        });
+        // Delete form submission
+        const deleteForm = document.getElementById('delete-form');
+        if (deleteForm) {
+            deleteForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                const id = document.getElementById('delete-category-id')?.value;
+                if (id) {
+                    window.confirmDelete(id);
+                } else {
+                    console.error('Delete category ID not found');
+                    window.notificationManager.showError("{% trans 'Erreur : ID de la catégorie non trouvé.' %}");
+                }
+            });
+        }
+        // Initialize category form submission
+        const categoryForm = document.getElementById('category-form');
+        if (categoryForm) {
+            categoryForm.addEventListener('submit', function(e) {
+                e.preventDefault();
+                window.submitCategoryForm();
+            });
+        }
+        // Verify categoryUrl
+        if (!categoryUrl || typeof categoryUrl !== 'string' || !categoryUrl.includes('category')) {
+            console.error('Invalid categoryUrl:', categoryUrl);
+            window.notificationManager.showError("{% trans 'Erreur : URL de catégorie invalide.' %}");
+        }
+        console.debug('CSRF token available on load:', getCookie('csrftoken'));
+    });
+</script>
+</div>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends "dashboard/index.html" %}
+{% load humanize %}
+
+{% block content %}
+    <!-- Main Content Area -->
+    <main class="flex-1 p-4 sm:p-6 lg:p-8 overflow-y-auto bg-gray-100">
+        <!-- Cartes Statistiques -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            {% for carte in cartes %}
+            <div class="bg-white rounded-xl shadow-md p-6 border-l-4 {{ carte.couleur_bordure }} hover:shadow-lg transition-all duration-300 transform hover:-translate-y-1">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <p class="text-sm font-medium text-gray-600">{{ carte.titre }}</p>
+                        <p class="text-3xl font-bold text-blue-600">{{ carte.valeur }}</p>  <!-- Bleu pour accents -->
+                        <p class="text-sm {{ carte.classe_changement }} mt-1">
+                            <i class="fas {% if 'ce mois' in carte.changement or 'nouvelles' in carte.changement %}fa-arrow-up{% else %}fa-info-circle{% endif %} mr-1"></i>
+                            {{ carte.changement }}
+                        </p>
+                    </div>
+                    <div class="w-12 h-12 {{ carte.couleur_fond }} rounded-lg flex items-center justify-center">
+                        <i class="{{ carte.icone }} text-white text-xl"></i>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        <!-- Charts and Recent Activities -->
+        <div class="grid grid-cols-1 lg:grid-cols-1 gap-6 mb-8">
+            <!-- Recent Activities -->
+            <div class="bg-white rounded-xl shadow-md p-6 border border-gray-200">
+                <h3 class="text-lg font-semibold text-blue-600 mb-6">Recent Activities</h3>  <!-- Bleu pour titres -->
+                <div class="space-y-4" id="recent-activities">
+                    {% for activity in recent_activities %}
+                    <div class="flex items-start space-x-3 p-3 bg-gray-50 rounded-lg">
+                        <div class="w-2 h-2 bg-{{ activity.color }} rounded-full mt-2"></div>
+                        <div class="flex-1">
+                            <p class="text-sm font-medium text-blue-600">{{ activity.title }}</p>
+                            <p class="text-xs text-gray-500">{{ activity.timestamp|timesince }} ago</p>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <p class="text-sm text-gray-500 text-center py-4">No recent activities</p>
+                    {% endfor %}
+                </div>
+                
+                <a href="{% url 'tasks:activity_log' %}" class="block w-full mt-6 text-sm text-blue-600 font-medium hover:text-blue-800 transition-colors bg-gray-50 hover:bg-gray-100 py-2 rounded-lg text-center">
+                    View all activities
+                </a>
+            </div>
+        </div>
+    </main>
+
+    <!-- Include Chart.js -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/flowbite/2.5.2/flowbite.min.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            // Get the chart context
+            const ctx = document.getElementById('monthlyChart').getContext('2d');
+            
+            // Initial chart data (adapté pour tâches)
+            const chartData = {
+                labels: {{ chart_labels|safe }},
+                datasets: [
+                    {
+                        label: 'Tâches Créées',
+                        data: {{ task_created_data|safe }},
+                        borderColor: '#EF4444',
+                        backgroundColor: 'rgba(239, 68, 68, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    },
+                    {
+                        label: 'Tâches Terminées',
+                        data: {{ task_completed_data|safe }},
+                        borderColor: '#3B82F6',
+                        backgroundColor: 'rgba(59, 130, 246, 0.1)',
+                        tension: 0.3,
+                        fill: true
+                    }
+                ]
+            };
+            
+            // Create the chart
+            const monthlyChart = new Chart(ctx, {
+                type: 'line',
+                data: chartData,
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            position: 'top',
+                        },
+                        tooltip: {
+                            mode: 'index',
+                            intersect: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            ticks: {
+                                precision: 0
+                            }
+                        }
+                    }
+                }
+            });
+            
+            // Handle period change
+            document.getElementById('chart-period').addEventListener('change', function() {
+                const months = this.value;
+                fetch(`/tasks/api/dashboard/chart-data/?months=${months}`)
+                    .then(response => response.json())
+                    .then(data => {
+                        monthlyChart.data.labels = data.labels;
+                        monthlyChart.data.datasets[0].data = data.task_created;
+                        monthlyChart.data.datasets[1].data = data.task_completed;
+                        monthlyChart.update();
+                    });
+            });
+        });
+    </script>
+{% endblock %}

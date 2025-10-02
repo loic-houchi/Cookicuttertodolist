@@ -1,0 +1,218 @@
+{% extends "dashboard/index.html" %}
+{% load i18n static %}
+
+{% block extrahead %}
+    <!-- Favicon pour éviter l'erreur 404 -->
+    <link rel="icon" href="{% static 'favicon.ico' %}">
+    <!-- Chart.js pour les graphiques -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- Gestionnaires personnalisés -->
+    <script src="{% static 'js/common/toast_manager.js' %}"></script>
+    <script src="{% static 'js/common/notification_manager.js' %}"></script>
+{% endblock %}
+
+{% block content %}
+<div class="fade-in">
+    <!-- En-tête du tableau de bord -->
+    <div class="bg-white rounded-xl shadow-md border border-gray-200 p-6 mb-6">
+        <div class="flex items-center space-x-4">
+            <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">  <!-- Bleu clair -->
+                <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+            </div>
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900">{% trans "Tableau de bord" %}</h2>
+                <p class="text-gray-600">{% trans "Aperçu de vos tâches et statistiques" %}</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cartes de statistiques -->
+    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
+        <!-- Total des tâches -->
+        <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">{% trans "Total des tâches" %}</p>
+                    <p class="text-2xl font-bold text-blue-600">{{ total_tasks }}</p>
+                </div>
+                <div class="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tâches terminées -->
+        <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">{% trans "Tâches terminées" %}</p>
+                    <p class="text-2xl font-bold text-green-600">{{ completed_tasks }}</p>
+                </div>
+                <div class="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tâches en attente -->
+        <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">{% trans "En attente" %}</p>
+                    <p class="text-2xl font-bold text-yellow-600">{{ pending_tasks }}</p>
+                </div>
+                <div class="w-12 h-12 bg-yellow-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-yellow-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tâches en retard -->
+        <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6 hover:shadow-lg transition-shadow">
+            <div class="flex items-center justify-between">
+                <div>
+                    <p class="text-sm font-medium text-gray-600">{% trans "En retard" %}</p>
+                    <p class="text-2xl font-bold text-red-600">{{ overdue_tasks }}</p>
+                </div>
+                <div class="w-12 h-12 bg-red-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-6 h-6 text-red-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L4.082 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                    </svg>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Graphiques et listes -->
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        <!-- Tâches par priorité -->
+        <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">{% trans "Tâches par priorité" %}</h3>
+            <div class="space-y-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">{% trans "Haute priorité" %}</span>
+                    <span class="text-sm font-medium text-red-600">{{ high_priority_tasks }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">{% trans "Priorité moyenne" %}</span>
+                    <span class="text-sm font-medium text-yellow-600">{{ medium_priority_tasks }}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-sm text-gray-600">{% trans "Basse priorité" %}</span>
+                    <span class="text-sm font-medium text-green-600">{{ low_priority_tasks }}</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Tâches par catégorie -->
+        <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-900 mb-4">{% trans "Tâches par catégorie" %}</h3>
+            {% if tasks_by_category %}
+                <div class="space-y-3">
+                    {% for category in tasks_by_category %}
+                    <div class="flex items-center justify-between">
+                        <span class="text-sm text-gray-600">{{ category.name }}</span>
+                        <span class="text-sm font-medium text-blue-600">{{ category.task_count }}</span>
+                    </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p class="text-sm text-gray-500">{% trans "Aucune catégorie avec des tâches en attente" %}</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Tâches récentes -->
+    <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">{% trans "Tâches récentes" %}</h3>
+            <a href="{% url 'tasks:task' %}" class="text-blue-600 hover:text-blue-800 text-sm font-medium">
+                {% trans "Voir toutes" %}
+            </a>
+        </div>
+        {% if recent_tasks %}
+            <div class="space-y-3">
+                {% for task in recent_tasks %}
+                <div class="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                    <div class="flex items-center space-x-3">
+                        <div class="w-2 h-2 bg-blue-600 rounded-full"></div>
+                        <div>
+                            <p class="text-sm font-medium text-gray-900">{{ task.title }}</p>
+                            <p class="text-xs text-gray-500">
+                                {% if task.category %}
+                                    {{ task.category.name }} • 
+                                {% endif %}
+                                {{ task.created_at|date:"d/m/Y H:i" }}
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center space-x-2">
+                        {% if task.due_date %}
+                            <span class="text-xs text-gray-500">{{ task.due_date|date:"d/m/Y" }}</span>
+                        {% endif %}
+                        <span class="px-2 py-1 text-xs font-medium rounded-full
+                            {% if task.priority == 'high' %}bg-red-100 text-red-800
+                            {% elif task.priority == 'medium' %}bg-yellow-100 text-yellow-800
+                            {% else %}bg-green-100 text-green-800{% endif %}">
+                            {% if task.priority == 'high' %}{% trans "Haute" %}
+                            {% elif task.priority == 'medium' %}{% trans "Moyenne" %}
+                            {% else %}{% trans "Basse" %}{% endif %}
+                        </span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        {% else %}
+            <p class="text-sm text-gray-500 text-center py-4">{% trans "Aucune tâche récente" %}</p>
+        {% endif %}
+    </div>
+
+    <!-- Actions rapides -->
+    <div class="bg-white rounded-lg shadow-md border border-gray-200 p-6 mt-6">
+        <h3 class="text-lg font-semibold text-gray-900 mb-4">{% trans "Actions rapides" %}</h3>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <a href="{% url 'tasks:task' %}" class="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">  <!-- Bleu clair pour actions -->
+                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-900">{% trans "Ajouter une tâche" %}</p>
+                    <p class="text-xs text-gray-500">{% trans "Créer une nouvelle tâche" %}</p>
+                </div>
+            </a>
+            <a href="{% url 'tasks:category' %}" class="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-900">{% trans "Gérer les catégories" %}</p>
+                    <p class="text-xs text-gray-500">{% trans "Organiser vos tâches" %}</p>
+                </div>
+            </a>
+            <a href="{% url 'tasks:task' %}" class="flex items-center space-x-3 p-4 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors">
+                <div class="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"></path>
+                    </svg>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-900">{% trans "Voir toutes les tâches" %}</p>
+                    <p class="text-xs text-gray-500">{% trans "Liste complète" %}</p>
+                </div>
+            </a>
+        </div>
+    </div>
+</div>
+{% endblock %}

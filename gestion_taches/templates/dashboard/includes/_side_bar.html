@@ -1,0 +1,162 @@
+{% load static %}
+{% load i18n %}
+
+<div id="sidebar"
+    class="fixed inset-y-0 left-0 z-50 w-64 bg-gray-900 transform transition-all duration-300 ease-in-out lg:translate-x-0 -translate-x-full flex flex-col shadow-lg">
+    <a href="{% url 'tasks:home' %}">
+    <div class="flex items-center justify-center h-16 bg-blue-600 flex-shrink-0 relative overflow-hidden">
+        <div class="absolute inset-0 bg-gradient-to-r from-blue-600 to-blue-700 opacity-50"></div>
+        <div class="flex items-center space-x-3 relative z-10">
+            <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                <img src="{{ company_settings.get_logo_url }}" 
+                     alt="{{ company_settings.company_name }} Logo" 
+                     class="w-10 h-10 rounded-full object-cover shadow-md">
+            </div>
+            <div class="text-white sidebar-text">
+                <h1 class="text-lg font-bold">{{ company_settings.company_name }}</h1>
+                <p class="text-xs text-gray-200">{% trans "Tableau de bord de gestion de tâches" %}</p>
+            </div>
+        </div>
+    </div>
+    </a>
+    
+    <nav id="sidebar-nav" class="flex-1 mt-8 overflow-y-auto px-4 space-y-2">
+        <div class="space-y-1">
+            {% with active_url_names=request.resolver_match.url_name %}
+            <a href="{% url 'tasks:dashboard' %}"
+                class="text-gray-300 hover:bg-blue-700 hover:text-white nav-link group flex items-center px-4 py-3 text-sm font-medium rounded-md transition-colors duration-200 {% if active_url_names == 'dashboard' %}active bg-blue-700 text-white{% endif %}">
+                <i class="fas fa-home text-lg flex-shrink-0 mr-3"></i>
+                <span class="sidebar-text">{% trans "Tableau de bord" %}</span>
+            </a>
+            <div class="relative">
+                <a href="#"
+                    class="nav-link group flex items-center justify-between px-4 py-3 text-sm font-medium rounded-md text-gray-300 hover:bg-blue-700 hover:text-white transition-colors duration-200"
+                    onclick="toggleDropdown(event, 'tasks-dropdown')">
+                    <div class="flex items-center">
+                        <i class="fas fa-tasks text-lg flex-shrink-0 mr-3"></i>
+                        <span class="sidebar-text">{% trans "Tâches" %}</span>
+                    </div>
+                    <i class="fas fa-chevron-down transition-transform duration-200 {% if active_url_names in 'category,task' %}rotate-180{% endif %}"
+                        id="tasks-dropdown-arrow"></i>
+                </a>
+                <div id="tasks-dropdown"
+                    class="overflow-hidden transition-all duration-300 ease-in-out bg-gray-800 rounded-md mt-1 {% if active_url_names in 'category,task' %}max-h-96{% else %}max-h-0{% endif %}">  <!-- Fond plus clair pour dropdown -->
+                    <a href="{% url 'tasks:category' %}"
+                        class="block px-8 py-2 text-sm text-gray-300 hover:bg-blue-700 hover:text-white transition-colors duration-200 {% if active_url_names == 'category' %}bg-blue-700 text-white font-medium{% endif %}">
+                        {% trans "Catégories de tâches" %}
+                    </a>
+                    <a href="{% url 'tasks:task' %}"
+                        class="block px-8 py-2 text-sm text-gray-300 hover:bg-blue-700 hover:text-white transition-colors duration-200 {% if active_url_names == 'task' %}bg-blue-700 text-white font-medium{% endif %}">
+                        {% trans "Tâches" %}
+                    </a>
+                </div>
+            </div>
+            <a href="{% url 'tasks:company_settings_manage' %}"
+                class="text-gray-300 hover:bg-blue-700 hover:text-white nav-link group flex items-center px-4 py-3 text-sm font-medium rounded-md transition-colors duration-200 {% if active_url_names == 'company_settings_manage' %}active bg-blue-700 text-white{% endif %}">
+                <i class="fas fa-cog text-lg flex-shrink-0 mr-3"></i>
+                <span class="sidebar-text">{% trans "Paramètres" %}</span>
+            </a>
+            <a href="{% url 'tasks:activity_log' %}"
+                class="text-gray-300 hover:bg-blue-700 hover:text-white nav-link group flex items-center px-4 py-3 text-sm font-medium rounded-md transition-colors duration-200 {% if active_url_names == 'activity_log' %}active bg-blue-700 text-white{% endif %}">
+                <i class="fas fa-history text-lg flex-shrink-0 mr-3"></i>
+                <span class="sidebar-text">{% trans "Recent Activities" %}</span>
+            </a>
+            {% endwith %}
+        </div>
+    </nav>
+
+    <div class="flex-shrink-0 p-4 border-t border-gray-700">
+        <div class="bg-blue-800/50 rounded-lg p-3">  <!-- Fond bleu foncé subtil -->
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 flex items-center justify-center flex-shrink-0">
+                    <img src="{{ company_settings.get_logo_url }}" 
+                         alt="{{ company_settings.company_name }} Logo" 
+                         class="w-10 h-10 rounded-full object-cover shadow-md">
+                </div>
+                <div class="text-white text-sm sidebar-text">
+                    <p class="font-medium">{{ current_user_first_name }}</p>
+                    <p class="text-gray-300 text-xs">{% trans "administrateur" %}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function handleSidebarSelection() {
+            const navLinks = document.querySelectorAll('#sidebar-nav a.nav-link');
+            const dropdownItems = document.querySelectorAll('#tasks-dropdown a');
+            
+            // Handle main nav links
+            navLinks.forEach(link => {
+                link.addEventListener('click', function(e) {
+                    if (!this.getAttribute('onclick')?.includes('toggleDropdown')) {
+                        // Clear all active states
+                        navLinks.forEach(l => l.classList.remove('active', 'bg-secondary', 'text-white'));
+                        dropdownItems.forEach(d => d.classList.remove('bg-secondary', 'text-white'));
+                        
+                        // Set active state for clicked link
+                        this.classList.add('active', 'bg-secondary', 'text-white');
+                        localStorage.setItem('selectedSidebarItem', this.getAttribute('href'));
+                    }
+                });
+            });
+            
+            // Handle dropdown items
+            dropdownItems.forEach(item => {
+                item.addEventListener('click', function(e) {
+                    e.stopPropagation(); // Prevent parent click event
+                    // Clear all active states
+                    navLinks.forEach(l => l.classList.remove('active', 'bg-secondary', 'text-white'));
+                    dropdownItems.forEach(d => d.classList.remove('bg-secondary', 'text-white'));
+                    
+                    // Set active state for clicked dropdown item
+                    this.classList.add('bg-secondary', 'text-white');
+                    localStorage.setItem('selectedSidebarItem', this.getAttribute('href'));
+                });
+            });
+        }
+
+        function toggleDropdown(event, dropdownId) {
+            event.preventDefault();
+            event.stopPropagation(); // Prevent parent click event
+            const dropdown = document.getElementById(dropdownId);
+            const arrow = document.getElementById(dropdownId + '-arrow');
+
+            if (dropdown && arrow) {
+                // Close all other dropdowns (si d'autres ajoutés plus tard)
+                const allDropdowns = document.querySelectorAll('#tasks-dropdown');
+                const allArrows = document.querySelectorAll('#tasks-dropdown-arrow');
+                
+                allDropdowns.forEach(d => {
+                    if (d.id !== dropdownId) {
+                        d.classList.remove('max-h-96');
+                        d.classList.add('max-h-0');
+                    }
+                });
+                allArrows.forEach(a => {
+                    if (a.id !== dropdownId + '-arrow') {
+                        a.classList.remove('rotate-180');
+                    }
+                });
+
+                // Toggle the clicked dropdown
+                if (dropdown.classList.contains('max-h-0')) {
+                    dropdown.classList.remove('max-h-0');
+                    dropdown.classList.add('max-h-96');
+                    arrow.classList.add('rotate-180');
+                } else {
+                    dropdown.classList.remove('max-h-96');
+                    dropdown.classList.add('max-h-0');
+                    arrow.classList.remove('rotate-180');
+                }
+            } else {
+                console.error('Dropdown or arrow element not found for ID:', dropdownId);
+            }
+        }
+
+        handleSidebarSelection();
+        window.toggleDropdown = toggleDropdown;
+    });
+</script>

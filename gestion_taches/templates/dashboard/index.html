@@ -1,0 +1,28 @@
+{% load static %}
+
+<!DOCTYPE html>
+<html lang="fr">
+{% include "dashboard/includes/_head.html" %}
+<body class="bg-gray-100 font-sans antialiased">  <!-- Changé bg-light en bg-gray-100 pour neutralité -->
+    <!-- Sidebar -->
+    {% include "dashboard/includes/_side_bar.html" %}
+
+    <!-- Overlay -->
+    <div id="overlay" class="fixed inset-0 bg-gray-800 bg-opacity-75 z-40 lg:hidden hidden"></div>  <!-- Gris plus foncé pour overlay -->
+    <div id="main-content" class="lg:pl-64 flex flex-col min-h-screen transition-all duration-300 ease-in-out">
+        <!-- Top Navigation -->
+        {% include "dashboard/includes/_header.html" %}
+
+        <!-- Main Content -->
+        {% block content %}
+        {% endblock %}
+    </div>
+    <script src="{% static 'admin/js/vendor/jquery/jquery.js' %}"></script>
+    <script src="{% get_static_prefix %}djangojs/jsi18n/"></script>
+    <script src="{% static 'js/common/toast_manager.js' %}"></script>
+    <script src="{% static 'js/common/delete_modal_manager.js' %}"></script>
+    <script src="{% static 'js/common/notification_manager.js' %}"></script>
+
+    {% include "dashboard/includes/_js.html" %}
+</body>
+</html>
